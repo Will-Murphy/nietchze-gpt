@@ -4,13 +4,14 @@ from torch.nn import functional as F
 
 
 # hyperparameters
+block_size = 8 # length of the context
 batch_size = 32 # length of the context
-batch_size = 4 # independent sequences to process in parallel
 learning_rate = 1e-3 # how fast to update the model
 max_iters = 5000 
 eval_interval = 500 
 eval_iters = 200
 n_embed = 32
+n_heads = 4
 
 torch.manual_seed(1337)
 
@@ -46,21 +47,6 @@ n = int(0.9*len(data))
 train_data = data[:n]
 val_data = data[n:]
 
-# initial sampling parameters
-block_size = 8 # length of the context
-print(train_data[:block_size + 1])
-
-print("\ntesting simple context and target")
-x = train_data[:block_size]
-y = train_data[1:block_size + 1]
-for t in range(block_size):
-    context = x[:t+1]
-    target = y[t]
-    print(f'when {context} is the context, {target} is the target')
-    
-# batch size
-batch_size = 4 # independent sequeences to process in parallel
-
 # random sampling of context and target with real data
 print("\ntesting context and target with real data sample & batching")
 
@@ -71,19 +57,6 @@ def get_batch(split):
     x = torch.stack([data[i:i+block_size] for i in ix])
     y = torch.stack([data[i+1:i+block_size+1] for i in ix])
     return x, y
-
-xb, yb = get_batch('train')
-print(xb.shape)
-print(xb)
-print(yb.shape)
-print(yb)
-
-for b in range(batch_size): # batch dimension
-    for t in range(block_size): # time dimension
-        # this is same as above but now with batch + actual random sampling
-        context = xb[b, :t+1]
-        target = yb[b, t]
-        print(f'when {context} is the context, {target} is the target')
         
 # estimate loss during training
 @torch.no_grad()
@@ -101,6 +74,7 @@ def estimate_loss():
     return out 
 
 class Head(nn.Module):
+    """ One head of self-attention """
     
     def __init__(self, head_size):
         super().__init__()
@@ -111,7 +85,7 @@ class Head(nn.Module):
         self.register_buffer('tril', torch.tril(torch.ones(block_size, block_size)))
         
     def forward(self, x):
-        B, T, C = 4, 8, 32 
+        B, T, C = x.shape
    
         k = self.key(x) # (B, T, head_size)  
         q = self.query(x) # (B, T, head_size)
@@ -126,6 +100,51 @@ class Head(nn.Module):
         out = wei @ v # (B, T, T) @ (B, T, C) --> (B, T, C)
         
         return out
+    
+class MultiHeadAttention(nn.Module):
+    """ Multiple heads of self-attention in parallel"""
+    
+    def __init__(self, n_heads, head_size):
+        super().__init__()
+        self.heads = nn.ModuleList([Head(head_size) for _ in range(n_heads)])
+        self.projection = nn.Linear(n_embed, n_embed)
+
+        
+    def forward(self, x):
+        out = torch.cat([head(x) for head in self.heads], dim=-1)
+        out = self.projection(out)
+        return out
+      
+class FeedFoward(nn.Module):
+    """ Simple Linear Feed forward layer followed by non-linearity """
+    
+    def __init__(self, n_embed):
+        super().__init__()
+        self.non_linear =nn.Linear(n_embed, n_embed), nn.ReLU(), nn.Linear(n_embed, n_embed)
+        self.net = nn.Sequential(
+            nn.Linear(n_embed, n_embed * 4), 
+            nn.ReLU(), 
+            nn.Linear(n_embed* 4, n_embed)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+class Block(nn.Module):
+    """ Transformer block: combines self-attention with feed-forward """
+    def __init__(self, n_embded, n_head):
+        super().__init__()
+        head_size = n_embed // n_heads
+        self.sa = MultiHeadAttention(n_heads, head_size)
+        self.ffwd = FeedFoward(n_embed)
+        
+    def forward(self, x):
+        x = x + self.sa(x)
+        x = x + self.ffwd(x)
+        return x
+            
+
+    
         
         
 # implement langauge model to train
@@ -136,7 +155,10 @@ class BigramLangaugeModel(nn.Module):
         self.token_embedding_table = nn.Embedding(vocab_size, n_embed)
         self.position_embedding_table = nn.Embedding(block_size, n_embed)
         
-        self.sa_head = Head(n_embed)
+        n_transf_blocks = 3
+        self.blocks = nn.Sequential(
+            *[Block(n_embed, n_heads) for _ in range(n_transf_blocks)]
+        )
         self.lm_head = nn.Linear(n_embed, vocab_size)
 
     def forward(self, idx, targets = None):
@@ -148,7 +170,7 @@ class BigramLangaugeModel(nn.Module):
         token_emb = self.token_embedding_table(idx)
         pos_emb = self.position_embedding_table(torch.arange(T)) # (T, C)
         x = token_emb + pos_emb # (B, T, C)
-        x = self.sa_head(x) # apply one head of self-attention (B, T, C)
+        x = self.blocks(x) # (B, T, C
         logits = self.lm_head(x) # (B, T, vocab_size)
         
         if targets is None:
@@ -182,14 +204,6 @@ class BigramLangaugeModel(nn.Module):
            
     
 model = BigramLangaugeModel()
-logits, loss = model(xb, yb)
-print ("\nlogits and loss")
-print(logits.shape)
-print(loss)
-
-# calculate expected loss, should be -ln(1/voacb_size)
-print("\nexpected loss", -torch.log(torch.tensor(1/vocab_size)))
-print("but we got", loss)
 
 # test generate function to get some predictions (text)!
 idx = torch.zeros((1,1), dtype=torch.long)
@@ -216,6 +230,5 @@ for i in range(max_iters):
     loss.backward()
     optimizer.step()
     
-print(f"After training loss is {loss.item()}")
 print("And we generate")
 print(decode(model.generate(idx, max_len_tokens=1000).tolist()[0])) # should be better
