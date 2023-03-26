@@ -33,7 +33,7 @@ if __name__ == "__main__":
         type=int,
         default=200,
         required=False,
-        help="evaluation iterations inside training loop",
+        help="iterations per evaluation in training loop",
     )
     arg_parser.add_argument(
         "--eval_interval",

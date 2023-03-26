@@ -183,7 +183,7 @@ class GPT:
         self.stream = stream
 
         self.max_iters = max_iters
-        self.eval_iters = eval_interval
+        self.eval_interval = eval_interval
         self.eval_iters = eval_iters
 
         text, chars, vocab_size = self.load_data()
@@ -224,7 +224,7 @@ class GPT:
     def train(self):
         print("\n Training...")
         for i in range(self.max_iters):
-            if i % self.eval_iters == 0:
+            if i % self.eval_interval == 0:
                 losses = self.estimate_loss()
                 print(
                     f"iteration {i}, train loss is {losses['train']}, val loss is {losses['val']}"
