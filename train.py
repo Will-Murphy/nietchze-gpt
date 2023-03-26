@@ -52,6 +52,14 @@ if __name__ == "__main__":
         help="manual seed for reproducibility",
     )
     arg_parser.add_argument(
+        "--stream",
+        nargs="?",
+        type=bool,
+        default=True,
+        required=False,
+        help="Whether or not to stream the generated output",
+    )
+    arg_parser.add_argument(
         "--input_file",
         nargs="?",
         type=str,

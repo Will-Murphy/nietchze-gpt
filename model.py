@@ -69,17 +69,14 @@ class MultiHeadAttention(nn.Module):
 
 
 class FeedFoward(nn.Module):
-    """Simple Linear Feed forward layer followed by non-linearity"""
+    """Simple Linear Feed forward layers with reinforcement in between"""
 
     def __init__(self, n_embed):
         super().__init__()
-        self.non_linear = (
-            nn.Linear(n_embed, n_embed),
-            nn.ReLU(),
-            nn.Linear(n_embed, n_embed),
-        )
         self.net = nn.Sequential(
-            nn.Linear(n_embed, n_embed * 4), nn.ReLU(), nn.Linear(n_embed * 4, n_embed)
+            nn.Linear(n_embed, n_embed * 4), 
+            nn.ReLU(), 
+            nn.Linear(n_embed * 4, n_embed)
         )
 
     def forward(self, x):
@@ -142,22 +139,27 @@ class BigramLangaugeModel(nn.Module):
 
         return logits, loss
 
-    def generate(self, idx, max_len_tokens):
+    def generate_all(self, idx, max_len_tokens):
         # idx is (B, T) array of indices in the current context
         for _ in range(max_len_tokens):
-            # crop idx to last blockzie tokens
-            idx_cond = idx[:, -block_size:]  # (B, T)
-            # get the logits (predictions)
-            logits, loss = self(idx_cond)
-            # focus only on the last time step
-            logits = logits[:, -1, :]  # (B, C)
-            # get probability distribution over the vocab
-            probs = F.softmax(logits, dim=-1)  # (B, C)
-            # sample from the distribution
-            idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
-            # append the new index to the sequence
-            idx = torch.cat((idx, idx_next), dim=1)  # (B, T+1)
+            idx = self.generate_next(idx)
 
+        return idx
+    
+    def generate_next(self, idx):
+        # crop idx to last blockzie tokens
+        idx_cond = idx[:, -block_size:]  # (B, T)
+        # get the logits (predictions)
+        logits, loss = self(idx_cond)
+        # focus only on the last time step
+        logits = logits[:, -1, :]  # (B, C)
+        # get probability distribution over the vocab
+        probs = F.softmax(logits, dim=-1)  # (B, C)
+        # sample from the distribution
+        idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
+        # append the new index to the sequence
+        idx = torch.cat((idx, idx_next), dim=1)  # (B, T+1)
+        
         return idx
 
 
@@ -171,12 +173,14 @@ class GPT:
         eval_iters,
         eval_interval,
         manual_seed=42,
+        stream=True,
         input_file="data/nietzsche_aphorisms.txt",
     ):
         torch.manual_seed(manual_seed)
 
         self.max_len = max_len
         self.input_file = input_file
+        self.stream = stream
 
         self.max_iters = max_iters
         self.eval_iters = eval_interval
@@ -238,11 +242,17 @@ class GPT:
     def generate(self):
         print("\n Generating...")
         idx = torch.zeros((1, 1), dtype=torch.long)
-        print(
-            self.decode(
-                self.model.generate(idx, max_len_tokens=self.max_len).tolist()[0]
-            )
-        ) 
+        if self.stream:
+            for i in range(self.max_len):
+                idx = self.model.generate_next(idx)
+                print(f"\n Generating token {i + 1} ... \n")
+                print(self.decode(idx.tolist()[0]))
+        else:
+            print(
+                self.decode(
+                    self.model.generate_all(idx, max_len_tokens=self.max_len).tolist()[0]
+                )
+            ) 
 
     def get_batch(self, split):
         # generate a batch of data on inputs x and targets y
