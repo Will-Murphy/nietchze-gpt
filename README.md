@@ -2,6 +2,7 @@
 
 Pico-GPT is a simple, lightweight generative pre-trained transformer (GPT) model used to generate text from a given input. 
 The model is trained on a single input text file and produces text based on learned relationships between characters or words.
+It is based on https://github.com/karpathy/nanoGPT.
 
 ## Requirements
 
