@@ -166,10 +166,10 @@ class GPT:
 
     def __init__(
         self,
-        max_len,
-        max_iters,
-        eval_iters,
-        eval_interval,
+        max_len=1000,
+        max_iters=1000,
+        eval_iters=200,
+        eval_interval=100,
         manual_seed=42,
         stream=True,
         input_file="data/nietzsche_aphorisms.txt",

@@ -56,7 +56,7 @@ if __name__ == "__main__":
         "--max_iters",
         nargs="?",
         type=int,
-        default=5000,
+        default=1000,
         required=False,
         help="training loop iterations",
     )
