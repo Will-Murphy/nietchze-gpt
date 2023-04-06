@@ -17,13 +17,12 @@ Make sure you have Python 3.8.2 installed.
 
 ## Usage
 
-To use Pico-GPT, first, train the model with your input text file using the following command:
+To use Pico-GPT, train and generate from the model with using the run command:
 
-```python run.py --input_file <your_input_text_file>```
-
+```python run.py```
 
 You can customize the training process and output by modifying the arguments passed to the script:
-
+- `--input_file`: path to input file (default: data/nietzsche_aphorisms.txt)
 - `--max_len`: Length of the output (default: 1000)
 - `--max_iters`: Training loop iterations (default: 1000)
 - `--eval_iters`: Iterations per evaluation in the training loop (default: 200)
@@ -35,7 +34,7 @@ You can customize the training process and output by modifying the arguments pas
 
 For example, to train the model on a custom text file with a manual seed and save the weights:
 
-```python run.py --input_file my_text_file.txt --manual_seed 123 --save_weights True```
+```python run.py --input_file data/my_text_file.txt --manual_seed 123 --save_weights True```
 
 To generate text using the trained model, use the following command:
 
