@@ -4,12 +4,12 @@ from torch.nn import functional as F
 
 
 # model hyperparameters
-block_size = 8  # length of the context
+block_size = 16  # length of the context
 batch_size = 32  # length of the context
 learning_rate = 1e-3  # how fast to update the model
-n_embed = 32  # embedding dimension
-n_heads = 4  # number of heads in multi-head attention
-n_layer = 4  # layers of heads in multi-head attention
+n_embed = 64  # embedding dimension
+n_heads = 8  # number of heads in multi-head attention
+n_layer = 8  # layers of heads in multi-head attention
 dropout = 0.02  # used to prevent overfitting during training, shuts off some nodes randoly each pass
 test_train_ratio = 0.9
 
@@ -74,9 +74,7 @@ class FeedFoward(nn.Module):
     def __init__(self, n_embed):
         super().__init__()
         self.net = nn.Sequential(
-            nn.Linear(n_embed, n_embed * 4), 
-            nn.ReLU(), 
-            nn.Linear(n_embed * 4, n_embed)
+            nn.Linear(n_embed, n_embed * 4), nn.ReLU(), nn.Linear(n_embed * 4, n_embed)
         )
 
     def forward(self, x):
@@ -145,7 +143,7 @@ class BigramLangaugeModel(nn.Module):
             idx = self.generate_next(idx)
 
         return idx
-    
+
     def generate_next(self, idx):
         # crop idx to last blockzie tokens
         idx_cond = idx[:, -block_size:]  # (B, T)
@@ -159,7 +157,7 @@ class BigramLangaugeModel(nn.Module):
         idx_next = torch.multinomial(probs, num_samples=1)  # (B, 1)
         # append the new index to the sequence
         idx = torch.cat((idx, idx_next), dim=1)  # (B, T+1)
-        
+
         return idx
 
 
@@ -221,7 +219,7 @@ class GPT:
 
         return text, chars, vocab_size
 
-    def train(self):
+    def train(self, save_weights_file=None):
         print("\n Training...")
         for i in range(self.max_iters):
             if i % self.eval_interval == 0:
@@ -239,7 +237,13 @@ class GPT:
             loss.backward()
             self.optimizer.step()
 
-    def generate(self):
+        if save_weights_file:
+            self.save_weights(save_weights_file)
+
+    def generate(self, load_weights_file=None):
+        if load_weights_file is not None:
+            self.load_weights(load_weights_file)
+
         print("\n Generating...")
         idx = torch.zeros((1, 1), dtype=torch.long)
         if self.stream:
@@ -248,11 +252,16 @@ class GPT:
                 print(f"\n Generating token {i + 1} ... \n")
                 print(self.decode(idx.tolist()[0]))
         else:
-            print(
-                self.decode(
-                    self.model.generate_all(idx, max_len_tokens=self.max_len).tolist()[0]
-                )
-            ) 
+            out = self.model.generate_all(idx, max_len_tokens=self.max_len).tolist()[0]
+            print(self.decode(out))
+
+    def save_weights(self, filepath):
+        print(f"\n Weights saved to {filepath}...")
+        torch.save(self.model.state_dict(), filepath)
+
+    def load_weights(self, filepath):
+        print(f"\n Loading weights from {filepath}...")
+        self.model.load_state_dict(torch.load(filepath))
 
     def get_batch(self, split):
         # generate a batch of data on inputs x and targets y
