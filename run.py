@@ -1,6 +1,5 @@
-import argparse, sys
+import argparse, sys, os
 
-import os
 from datetime import datetime
 
 from model import GPT
@@ -88,7 +87,7 @@ if __name__ == "__main__":
         "--stream",
         nargs="?",
         type=bool,
-        default=True,
+        default=False,
         required=False,
         help="Whether or not to stream the generated output",
     )
