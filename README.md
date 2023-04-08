@@ -1,8 +1,6 @@
 # Pico-GPT
 
-Pico-GPT is a simple, lightweight generative pre-trained transformer (GPT) model used to generate text after training on a 
-given input. The model is trained on a single input text file and produces text based on learned relationships between 
-characters or words. It is based on https://github.com/karpathy/nanoGPT and designed for use on a laptop.
+Pico-GPT is a simple, lightweight generative pre-trained transformer (GPT) model used to generate text. It is trained on a single text file and produces text based on learned relationships between characters or words. It is based on https://github.com/karpathy/nanoGPT and designed for use on a laptop.
 
 ## Requirements
 
@@ -14,11 +12,14 @@ Or you can manually install the required packages:
 
 ```pip install torch torchvision transformers datasets wandb```
 
-Make sure you have Python 3.8.2 installed.
+Make sure you have Python 3.8.2 installed. If you used pipenv shell ensure you run 
+the following before following the below usage directions:
+
+```pipenv shell```
 
 ## Usage
 
-To use Pico-GPT, train and generate from the model with using the run command:
+To use Pico-GPT, train and generate from the model with the run command:
 
 ```python run.py```
 
@@ -33,11 +34,12 @@ You can customize the training process and output by modifying the arguments pas
 - `--save_weights`: Whether or not to save weights from training (default: False)
 - `--from_weights`: Weights file to load from, skips training (default: None)
 
-For example, to train the model for 1000 iteration on a custom text file and save the weights:
+For example, to train the model for 10,000 iterations on a custom text file named nietzsche_aphorisms.txt in the 
+data directory, and save the weights (so you don't have to run intensive training each time):
 
 ```python run.py --input_file data/nietzsche_aphorisms.txt --max_len 1000 --max_iters 10000 --save_weights True```
 
-To generate text using the trained model, use the following command:
+To generate text using a previously trained model, use the following command:
 
 ```python run.py --from_weights <your_weights_file_without_extension>```
 
@@ -52,16 +54,29 @@ The following is a snippet of its ouput:
 
 ```
 864 The world. Sential These psychological races of her knowledge, from step, though, that
-of humaning. The are live to ention divine or metaphod
-was all the logical locks, the simple, the suffering, and whatever, as a sive for example in its Herding to life! _Deed is in consciousness,
-we about and asquieted as the only that how much, into arguants harm on
-halgs, beforent raelia-semilation of selfishness, it is by them avoiding its
-meantical man is now purposed human so that music in
-imposime something in its as at a name,
-confiling of
-things flictive of which in those only there--against of life.
+of humaning. The are live to ention divine or metaphod was all the logical locks, the simple, 
+the suffering, and whatever, as a sive for example in its Herding to life! _Deed is in consciousness,
+we about and asquieted as the only that how much, into arguants harm on halgs, beforent raelia-semilation 
+of selfishness, it is by them avoiding its meantical man is now purposed human so that music in
+imposime something in its as at a name, confiling of things flictive of which in those 
+only there--against of life.
 ```
 
-It mirrors the style and structure of the input fairly well despite 
-being nonsensical and gramatically incorrect.
+When compare to an example from the training set, we can see it mirrors the style and structure of the input fairly well despite 
+being nonsensical and gramatically incorrect:
+
+```
+112. At the Contemplation of Certain Ancient Sacrificial Proceedings. --How
+many sentiments are lost to us is manifest in the union of the farcical,
+even of the obscene, with the religious feeling. The feeling that this
+mixture is possible is becoming extinct. We realize the mixture only
+historically, in the mysteries of Demeter and Dionysos and in the
+Christian Easter festivals and religious mysteries. But we still
+perceive the sublime in connection with the ridiculous, and the like,
+the emotional with the absurd. Perhaps a later age will be unable to
+understand even these combinations.
+```
+
+If we were to increase training iterations (i.e --max_iters 10000) & scale up the model hyperparameters in model.py,
+we could achieve much better performance in matching the input text.
 
